@@ -85,7 +85,6 @@ public class AIBowler : MonoBehaviour
         // Reset the ball's position and rotation
         transform.position = _originalPosition;
         transform.rotation = _originalRotation;
-        Destroy(GetComponent<Rigidbody>());
         // Reset any other ball-related variables or states
     }
 }

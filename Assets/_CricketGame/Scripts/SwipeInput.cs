@@ -1,171 +1,220 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
-public enum BattingMode
+namespace _CricketGame.Scripts
 {
-    Defensive,
-    Attacking,
-    Improvised
-}
-
-public class SwipeInput : MonoBehaviour
-{
-    public float minSwipeDistance = 50f;  // Minimum distance for a swipe gesture
-    public float maxSwipeTime = 1f;  // Maximum time for a swipe gesture
-
-    public Animator playerAnimator;
-    public AnimationClip animationClip;
-
-    private Vector2 swipeStartPosition;
-    private float swipeStartTime;
-
-    private BattingMode currentBattingMode = BattingMode.Defensive;
-    private static readonly int Shot = Animator.StringToHash("Shot");
-    private float animationTime;
-
-    private void Update()
+    public enum BattingMode
     {
-        // Check for swipe gesture
-        if (Input.touchCount > 0)
+        Defensive,
+        Attacking,
+        Improvised
+    }
+
+    public class SwipeInput : MonoBehaviour
+    {
+        public float hitForce = 100f;
+        public float minSwipeDistance = 50f;  // Minimum distance for a swipe gesture
+        public float maxSwipeTime = 1f;  // Maximum time for a swipe gesture
+
+        public Animator playerAnimator;
+        public AnimationClip animationClip;
+
+        private Vector2 _swipeStartPosition, _swipeDirection;
+        private float _swipeStartTime;
+
+        private readonly BattingMode _currentBattingMode = BattingMode.Defensive;
+        private static readonly int Shot = Animator.StringToHash("CoverDrive");
+        private float _animationTime;
+        public Rigidbody ballRigidbody;
+
+        public static SwipeInput Instance;
+
+        private void Awake()
         {
-            Touch touch = Input.GetTouch(0);
+            if (Instance == null)
+                Instance = this;
+        }
+
+        private void Update()
+        {
+            // Check for swipe gesture
+            if (Input.touchCount <= 0) return;
+            var touch = Input.GetTouch(0);
 
             // Check the phase of the touch input
             switch (touch.phase)
             {
                 case TouchPhase.Began:
-                    swipeStartPosition = touch.position;
-                    swipeStartTime = Time.time;
+                    _swipeStartPosition = touch.position;
+                    _swipeStartTime = Time.time;
                     break;
 
                 case TouchPhase.Ended:
-                    float swipeEndTime = Time.time;
-                    Vector2 swipeEndPosition = touch.position;
-                    float swipeDuration = swipeEndTime - swipeStartTime;
-                    float swipeDistance = Vector2.Distance(swipeStartPosition, swipeEndPosition);
+                    var swipeEndTime = Time.time;
+                    var swipeEndPosition = touch.position;
+                    var swipeDuration = swipeEndTime - _swipeStartTime;
+                    var swipeDistance = Vector2.Distance(_swipeStartPosition, swipeEndPosition);
 
                     // Check if the swipe meets the minimum requirements
                     if (swipeDuration < maxSwipeTime && swipeDistance > minSwipeDistance)
                     {
-                        Vector2 swipeDirection = swipeEndPosition - swipeStartPosition;
-                        swipeDirection.Normalize();
+                        _swipeDirection = swipeEndPosition - _swipeStartPosition;
+                        _swipeDirection.Normalize();
 
                         // Determine the direction of the swipe (horizontal or vertical)
-                        float swipeAngle = Vector2.Dot(swipeDirection, Vector2.right);
+                        var swipeAngle = Vector2.Dot(_swipeDirection, Vector2.right);
 
-                        if (swipeAngle > 0.5f)
+                        switch (swipeAngle)
                         {
-                            // Swipe to the right (play appropriate shot)
-                            PlayRightShot();
-                        }
-                        else if (swipeAngle < -0.5f)
-                        {
-                            // Swipe to the left (play appropriate shot)
-                            PlayLeftShot();
-                        }
-                        else
-                        {
-                            // Swipe vertically (play appropriate shot)
-                            PlayVerticalShot();
+                            case > 0.5f:
+                                // Swipe to the right (play appropriate shot)
+                                PlayRightShot();
+                                break;
+                            case < -0.5f:
+                                // Swipe to the left (play appropriate shot)
+                                PlayLeftShot();
+                                break;
+                            default:
+                                // Swipe vertically (play appropriate shot)
+                                PlayVerticalShot();
+                                break;
                         }
                     }
                     break;
+                case TouchPhase.Moved:
+                    break;
+                case TouchPhase.Stationary:
+                    break;
+                case TouchPhase.Canceled:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
-    }
 
-    private void PlayRightShot()
-    {
-        // Check the current batting mode or state of the player (e.g., defensive, attacking, etc.)
-        // Implement your own logic here based on the current state to determine the appropriate shot to play
+        private void BallCollide()
+        {
+            // Calculate the direction based on the swipe direction
+            var direction = new Vector3(_swipeDirection.x, 0f, _swipeDirection.y);
+            direction.Normalize();
 
-        // Example logic:
-        if (currentBattingMode == BattingMode.Defensive)
-        {
-            // Play a defensive shot to the right
-            playerAnimator.SetBool(Shot, true);
-            animationTime = animationClip.length;
-            StartCoroutine(WaitToOffAnimation(animationTime));
-            Debug.Log("Defensive Right Shot Played");
+            // Apply the hit force to the ball
+            ballRigidbody.AddForce(direction * hitForce, ForceMode.Impulse);
         }
-        else if (currentBattingMode == BattingMode.Attacking)
+    
+        private void PlayRightShot()
         {
-            // Play an attacking shot to the right
-            playerAnimator.SetBool(Shot, true);
-            animationTime = animationClip.length;
-            StartCoroutine(WaitToOffAnimation(animationTime));
-            Debug.Log("Attacking Right Shot Played");
-        }
-        else if (currentBattingMode == BattingMode.Improvised)
-        {
-            // Play an improvised shot to the right
-            playerAnimator.SetBool(Shot, true);
-            animationTime = animationClip.length;
-            StartCoroutine(WaitToOffAnimation(animationTime));
-            Debug.Log("Improvised Right Shot Played");
-        }
-        // Add more conditions or variations as needed
-    }
+            // Check the current batting mode or state of the player (e.g., defensive, attacking, etc.)
+            // Implement your own logic here based on the current state to determine the appropriate shot to play
 
-    private void PlayLeftShot()
-    {
-        if (currentBattingMode == BattingMode.Defensive)
-        {
-            // Play a defensive shot to the left
-            playerAnimator.SetBool(Shot, true);
-            animationTime = animationClip.length;
-            StartCoroutine(WaitToOffAnimation(animationTime));
-            Debug.Log("Defensive Left Shot Played");
+            switch (_currentBattingMode)
+            {
+                // Example logic:
+                case BattingMode.Defensive:
+                    BallCollide();
+                    // Play a defensive shot to the right
+                    playerAnimator.SetBool(Shot, true);
+                    _animationTime = animationClip.length;
+                    StartCoroutine(WaitToOffAnimation(_animationTime));
+                    Debug.Log("Defensive Right Shot Played");
+                    break;
+                case BattingMode.Attacking:
+                {
+                    BallCollide();
+                    // Play an attacking shot to the right
+                    playerAnimator.SetBool(Shot, true);
+                    _animationTime = animationClip.length;
+                    StartCoroutine(WaitToOffAnimation(_animationTime));
+                    Debug.Log("Attacking Right Shot Played");
+                    break;
+                }
+                case BattingMode.Improvised:
+                {
+                    BallCollide();
+                    // Play an improvised shot to the right
+                    playerAnimator.SetBool(Shot, true);
+                    _animationTime = animationClip.length;
+                    StartCoroutine(WaitToOffAnimation(_animationTime));
+                    Debug.Log("Improvised Right Shot Played");
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            // Add more conditions or variations as needed
         }
-        else if (currentBattingMode == BattingMode.Attacking)
-        {
-            // Play an attacking shot to the left
-            playerAnimator.SetBool(Shot, true);
-            animationTime = animationClip.length;
-            StartCoroutine(WaitToOffAnimation(animationTime));
-            Debug.Log("Attacking Left Shot Played");
-        }
-        else if (currentBattingMode == BattingMode.Improvised)
-        {
-            // Play an improvised shot to the left
-            playerAnimator.SetBool(Shot, true);
-            animationTime = animationClip.length;
-            StartCoroutine(WaitToOffAnimation(animationTime));
-            Debug.Log("Improvised Left Shot Played");
-        }
-    }
 
-    private void PlayVerticalShot()
-    {
-        if (currentBattingMode == BattingMode.Defensive)
+        private void PlayLeftShot()
         {
-            // Play a defensive shot to the Vertical
-            playerAnimator.SetBool(Shot, true);
-            animationTime = animationClip.length;
-            StartCoroutine(WaitToOffAnimation(animationTime));
-            Debug.Log("Defensive Vertical Shot Played");
+            switch (_currentBattingMode)
+            {
+                case BattingMode.Defensive:
+                    BallCollide();
+                    // Play a defensive shot to the left
+                    playerAnimator.SetBool(Shot, true);
+                    _animationTime = animationClip.length;
+                    StartCoroutine(WaitToOffAnimation(_animationTime));
+                    Debug.Log("Defensive Left Shot Played");
+                    break;
+                case BattingMode.Attacking:
+                    BallCollide();
+                    // Play an attacking shot to the left
+                    playerAnimator.SetBool(Shot, true);
+                    _animationTime = animationClip.length;
+                    StartCoroutine(WaitToOffAnimation(_animationTime));
+                    Debug.Log("Attacking Left Shot Played");
+                    break;
+                case BattingMode.Improvised:
+                    BallCollide();
+                    // Play an improvised shot to the left
+                    playerAnimator.SetBool(Shot, true);
+                    _animationTime = animationClip.length;
+                    StartCoroutine(WaitToOffAnimation(_animationTime));
+                    Debug.Log("Improvised Left Shot Played");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
-        else if (currentBattingMode == BattingMode.Attacking)
-        {
-            // Play an attacking shot to the Vertical
-            playerAnimator.SetBool(Shot, true);
-            animationTime = animationClip.length;
-            StartCoroutine(WaitToOffAnimation(animationTime));
-            Debug.Log("Attacking Vertical Shot Played");
-        }
-        else if (currentBattingMode == BattingMode.Improvised)
-        {
-            // Play an improvised shot to the Vertical
-            playerAnimator.SetBool(Shot, true);
-            animationTime = animationClip.length;
-            StartCoroutine(WaitToOffAnimation(animationTime));
-            Debug.Log("Improvised Vertical Shot Played");
-        }
-    }
 
-    private IEnumerator WaitToOffAnimation(float time)
-    {
-        yield return new WaitForSecondsRealtime(time);
-        playerAnimator.SetBool(Shot, false);
+        private void PlayVerticalShot()
+        {
+            switch (_currentBattingMode)
+            {
+                case BattingMode.Defensive:
+                    BallCollide();
+                    // Play a defensive shot to the Vertical
+                    playerAnimator.SetBool(Shot, true);
+                    _animationTime = animationClip.length;
+                    StartCoroutine(WaitToOffAnimation(_animationTime));
+                    Debug.Log("Defensive Vertical Shot Played");
+                    break;
+                case BattingMode.Attacking:
+                    BallCollide();
+                    // Play an attacking shot to the Vertical
+                    playerAnimator.SetBool(Shot, true);
+                    _animationTime = animationClip.length;
+                    StartCoroutine(WaitToOffAnimation(_animationTime));
+                    Debug.Log("Attacking Vertical Shot Played");
+                    break;
+                case BattingMode.Improvised:
+                    BallCollide();
+                    // Play an improvised shot to the Vertical
+                    playerAnimator.SetBool(Shot, true);
+                    _animationTime = animationClip.length;
+                    StartCoroutine(WaitToOffAnimation(_animationTime));
+                    Debug.Log("Improvised Vertical Shot Played");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private IEnumerator WaitToOffAnimation(float time)
+        {
+            yield return new WaitForSecondsRealtime(time);
+            playerAnimator.SetBool(Shot, false);
+        }
     }
 }

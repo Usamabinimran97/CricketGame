@@ -1,18 +1,14 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
+using _CricketGame.Scripts;
 using UnityEngine;
 
 public class BatsmanController : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
+    private void OnCollisionEnter(Collision other)
     {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        if (other.collider.CompareTag("Bowl"))
+        {
+            SwipeInput.Instance.ballRigidbody = other.collider.GetComponent<Rigidbody>();
+        }
     }
 }
